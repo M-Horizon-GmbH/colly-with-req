@@ -1030,6 +1030,11 @@ func (c *Collector) SetClient(client *req.Client) {
 	c.backend.Client = client
 }
 
+// GetClient returns the http.Client used by the collector
+func (c *Collector) GetClient() *req.Client {
+	return c.backend.Client
+}
+
 // WithTransport allows you to set a custom http.RoundTripper (transport)
 func (c *Collector) WithTransport(transport *req.Transport) {
 	c.backend.Client.Transport = transport
