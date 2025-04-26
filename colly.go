@@ -41,12 +41,13 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/antchfx/htmlquery"
 	"github.com/antchfx/xmlquery"
-	"github.com/gocolly/colly/v2/debug"
-	"github.com/gocolly/colly/v2/storage"
+	"github.com/imroc/req/v3"
 	"github.com/kennygrant/sanitize"
 	whatwgUrl "github.com/nlnwa/whatwg-url/url"
 	"github.com/temoto/robotstxt"
-	"google.golang.org/appengine/urlfetch"
+
+	"github.com/gocolly/colly/v2/debug"
+	"github.com/gocolly/colly/v2/storage"
 )
 
 // A CollectorOption sets an option on a Collector.
@@ -251,7 +252,7 @@ var envMap = map[string]func(*Collector, string){
 		c.DetectCharset = isYesString(val)
 	},
 	"DISABLE_COOKIES": func(c *Collector, _ string) {
-		c.backend.Client.Jar = nil
+		c.backend.Client.SetCookieJar(nil)
 	},
 	"DISALLOWED_DOMAINS": func(c *Collector, val string) {
 		c.DisallowedDomains = strings.Split(val, ",")
@@ -480,7 +481,7 @@ func (c *Collector) Init() {
 	c.backend = &httpBackend{}
 	jar, _ := cookiejar.New(nil)
 	c.backend.Init(jar)
-	c.backend.Client.CheckRedirect = c.checkRedirectFunc()
+	c.backend.Client.GetClient().CheckRedirect = c.checkRedirectFunc()
 	c.wg = &sync.WaitGroup{}
 	c.lock = &sync.RWMutex{}
 	c.robotsMap = make(map[string]*robotstxt.RobotsData)
@@ -502,14 +503,15 @@ func (c *Collector) Init() {
 //	   ...
 //	  c.Visit("https://google.ca")
 //	}
-func (c *Collector) Appengine(ctx context.Context) {
-	client := urlfetch.Client(ctx)
-	client.Jar = c.backend.Client.Jar
-	client.CheckRedirect = c.backend.Client.CheckRedirect
-	client.Timeout = c.backend.Client.Timeout
-
-	c.backend.Client = client
-}
+//	TODO: deactivated
+// func (c *Collector) Appengine(ctx context.Context) {
+// 	client := urlfetch.Client(ctx)
+// 	client.Jar = c.backend.Client.Jar
+// 	client.CheckRedirect = c.backend.Client.CheckRedirect
+// 	client.Timeout = c.backend.Client.Timeout
+//
+// 	c.backend.Client = client
+// }
 
 // Visit starts Collector's collecting job by creating a
 // request to the URL specified in parameter.
@@ -856,7 +858,7 @@ func (c *Collector) checkRobots(u *url.URL) error {
 			req.Host = hostHeader
 		}
 
-		resp, err := c.backend.Client.Do(req)
+		resp, err := c.backend.Client.GetClient().Do(req)
 		if err != nil {
 			return err
 		}
@@ -1024,28 +1026,28 @@ func (c *Collector) OnScraped(f ScrapedCallback) {
 }
 
 // SetClient will override the previously set http.Client
-func (c *Collector) SetClient(client *http.Client) {
+func (c *Collector) SetClient(client *req.Client) {
 	c.backend.Client = client
 }
 
 // WithTransport allows you to set a custom http.RoundTripper (transport)
-func (c *Collector) WithTransport(transport http.RoundTripper) {
+func (c *Collector) WithTransport(transport *req.Transport) {
 	c.backend.Client.Transport = transport
 }
 
 // DisableCookies turns off cookie handling
 func (c *Collector) DisableCookies() {
-	c.backend.Client.Jar = nil
+	c.backend.Client.SetCookieJar(nil)
 }
 
 // SetCookieJar overrides the previously set cookie jar
 func (c *Collector) SetCookieJar(j http.CookieJar) {
-	c.backend.Client.Jar = j
+	c.backend.Client.SetCookieJar(j)
 }
 
 // SetRequestTimeout overrides the default timeout (10 seconds) for this collector
 func (c *Collector) SetRequestTimeout(timeout time.Duration) {
-	c.backend.Client.Timeout = timeout
+	c.backend.Client.SetTimeout(timeout)
 }
 
 // SetStorage overrides the default in-memory storage.
@@ -1055,7 +1057,7 @@ func (c *Collector) SetStorage(s storage.Storage) error {
 		return err
 	}
 	c.store = s
-	c.backend.Client.Jar = createJar(s)
+	c.backend.Client.SetCookieJar(createJar(s))
 	return nil
 }
 
@@ -1083,16 +1085,9 @@ func (c *Collector) SetProxy(proxyURL string) error {
 // and "socks5" are supported. If the scheme is empty,
 // "http" is assumed.
 func (c *Collector) SetProxyFunc(p ProxyFunc) {
-	t, ok := c.backend.Client.Transport.(*http.Transport)
-	if c.backend.Client.Transport != nil && ok {
-		t.Proxy = p
-		t.DisableKeepAlives = true
-	} else {
-		c.backend.Client.Transport = &http.Transport{
-			Proxy:             p,
-			DisableKeepAlives: true,
-		}
-	}
+	c.backend.Client = c.backend.Client.
+		SetProxy(p).
+		DisableKeepAlives()
 }
 
 func createEvent(eventType string, requestID, collectorID uint32, kvargs map[string]string) *debug.Event {
@@ -1345,32 +1340,32 @@ func (c *Collector) Limits(rules []*LimitRule) error {
 // SetRedirectHandler instructs the Collector to allow multiple downloads of the same URL
 func (c *Collector) SetRedirectHandler(f func(req *http.Request, via []*http.Request) error) {
 	c.redirectHandler = f
-	c.backend.Client.CheckRedirect = c.checkRedirectFunc()
+	c.backend.Client.GetClient().CheckRedirect = c.checkRedirectFunc()
 }
 
 // SetCookies handles the receipt of the cookies in a reply for the given URL
 func (c *Collector) SetCookies(URL string, cookies []*http.Cookie) error {
-	if c.backend.Client.Jar == nil {
+	if c.backend.Client.GetClient().Jar == nil {
 		return ErrNoCookieJar
 	}
 	u, err := url.Parse(URL)
 	if err != nil {
 		return err
 	}
-	c.backend.Client.Jar.SetCookies(u, cookies)
+	c.backend.Client.GetClient().Jar.SetCookies(u, cookies)
 	return nil
 }
 
 // Cookies returns the cookies to send in a request for the given URL.
 func (c *Collector) Cookies(URL string) []*http.Cookie {
-	if c.backend.Client.Jar == nil {
+	if c.backend.Client.GetClient().Jar == nil {
 		return nil
 	}
 	u, err := url.Parse(URL)
 	if err != nil {
 		return nil
 	}
-	return c.backend.Client.Jar.Cookies(u)
+	return c.backend.Client.GetClient().Jar.Cookies(u)
 }
 
 // Clone creates an exact copy of a Collector without callbacks.
@@ -1526,7 +1521,6 @@ func createMultipartReader(boundary string, data map[string][]byte) io.Reader {
 	}
 	buffer.WriteString(dashBoundary + "--\n\n")
 	return bytes.NewReader(buffer.Bytes())
-
 }
 
 // randomBoundary was borrowed from

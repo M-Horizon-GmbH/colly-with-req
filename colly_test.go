@@ -31,12 +31,14 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/imroc/req/v3"
 
 	"github.com/gocolly/colly/v2/debug"
 )
 
-var serverIndexResponse = []byte("hello world\n")
-var callbackTestHTML = []byte(`
+var (
+	serverIndexResponse = []byte("hello world\n")
+	callbackTestHTML    = []byte(`
 <!DOCTYPE html>
 <html>
 <head>
@@ -49,6 +51,8 @@ var callbackTestHTML = []byte(`
 </body>
 </html>
 `)
+)
+
 var robotsFile = `
 User-agent: *
 Allow: /allowed
@@ -129,7 +133,6 @@ func newUnstartedTestServer() *httptest.Server {
 			destination = d
 		}
 		http.Redirect(w, r, destination, http.StatusSeeOther)
-
 	}))
 
 	mux.Handle("/redirected/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -753,7 +756,6 @@ func TestCollectorURLRevisitCheck(t *testing.T) {
 	c := NewCollector()
 
 	visited, err := c.HasVisited(ts.URL)
-
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -765,7 +767,6 @@ func TestCollectorURLRevisitCheck(t *testing.T) {
 	c.Visit(ts.URL)
 
 	visited, err = c.HasVisited(ts.URL)
-
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -846,7 +847,6 @@ func TestCollectorPostURLRevisitCheck(t *testing.T) {
 	}
 
 	posted, err := c.HasPosted(ts.URL+"/login", postData)
-
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -858,7 +858,6 @@ func TestCollectorPostURLRevisitCheck(t *testing.T) {
 	c.Post(ts.URL+"/login", postData)
 
 	posted, err = c.HasPosted(ts.URL+"/login", postData)
-
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -869,7 +868,6 @@ func TestCollectorPostURLRevisitCheck(t *testing.T) {
 
 	postData["lastname"] = "world"
 	posted, err = c.HasPosted(ts.URL+"/login", postData)
-
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -881,7 +879,6 @@ func TestCollectorPostURLRevisitCheck(t *testing.T) {
 	c.Post(ts.URL+"/login", postData)
 
 	posted, err = c.HasPosted(ts.URL+"/login", postData)
-
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -910,7 +907,6 @@ func TestCollectorURLRevisitDomainDisallowed(t *testing.T) {
 	if got, want := err, ErrForbiddenDomain; got != want {
 		t.Fatalf("wrong error on second visit: got=%v want=%v", got, want)
 	}
-
 }
 
 func TestCollectorPost(t *testing.T) {
@@ -1015,7 +1011,8 @@ func TestIssue594(t *testing.T) {
 
 	c := NewCollector()
 	// if timeout is set, this bug is not triggered
-	c.SetClient(&http.Client{Timeout: 0 * time.Second})
+	client := req.C().SetTimeout(10 * time.Second)
+	c.SetClient(client)
 
 	c.Visit(ts.URL)
 }
@@ -1179,7 +1176,6 @@ func TestRobotsWhenAllowed(t *testing.T) {
 	})
 
 	err := c.Visit(ts.URL + "/allowed")
-
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1233,11 +1229,9 @@ func TestIgnoreRobotsWhenDisallowed(t *testing.T) {
 	})
 
 	err := c.Visit(ts.URL + "/disallowed")
-
 	if err != nil {
 		t.Fatal(err)
 	}
-
 }
 
 func TestConnectionErrorOnRobotsTxtResultsInError(t *testing.T) {
@@ -1420,7 +1414,6 @@ func TestParseHTTPErrorResponse(t *testing.T) {
 	if contentCount != 1 {
 		t.Fatal("Content isn't parsed with ParseHTTPErrorResponse enabled")
 	}
-
 }
 
 func TestHTMLElement(t *testing.T) {
@@ -1683,7 +1676,6 @@ func TestCollectorContext(t *testing.T) {
 	if !onErrorCalled {
 		t.Error("OnError was not called")
 	}
-
 }
 
 func BenchmarkOnHTML(b *testing.B) {
@@ -1819,6 +1811,7 @@ func TestCollectorPostRetry(t *testing.T) {
 		t.Error("OnResponse Retry was not called")
 	}
 }
+
 func TestCollectorGetRetry(t *testing.T) {
 	ts := newTestServer()
 	defer ts.Close()

@@ -15,6 +15,7 @@
 package colly
 
 import (
+	"compress/gzip"
 	"crypto/sha1"
 	"encoding/gob"
 	"encoding/hex"
@@ -28,14 +29,13 @@ import (
 	"sync"
 	"time"
 
-	"compress/gzip"
-
 	"github.com/gobwas/glob"
+	"github.com/imroc/req/v3"
 )
 
 type httpBackend struct {
 	LimitRules []*LimitRule
-	Client     *http.Client
+	Client     *req.Client
 	lock       *sync.RWMutex
 }
 
@@ -94,11 +94,10 @@ func (r *LimitRule) Init() error {
 }
 
 func (h *httpBackend) Init(jar http.CookieJar) {
-	rand.Seed(time.Now().UnixNano())
-	h.Client = &http.Client{
-		Jar:     jar,
-		Timeout: 10 * time.Second,
-	}
+	h.Client = req.C().
+		SetCookieJar(jar).
+		SetTimeout(10 * time.Second)
+
 	h.lock = &sync.RWMutex{}
 }
 
@@ -180,7 +179,7 @@ func (h *httpBackend) Do(request *http.Request, bodySize int, checkHeadersFunc c
 		}(r)
 	}
 
-	res, err := h.Client.Do(request)
+	res, err := h.Client.GetClient().Do(request)
 	if err != nil {
 		return nil, err
 	}
