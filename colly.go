@@ -46,8 +46,8 @@ import (
 	whatwgUrl "github.com/nlnwa/whatwg-url/url"
 	"github.com/temoto/robotstxt"
 
-	"github.com/gocolly/colly/v2/debug"
-	"github.com/gocolly/colly/v2/storage"
+	"github.com/M-Horizon-GmbH/colly-with-req/debug"
+	"github.com/M-Horizon-GmbH/colly-with-req/storage"
 )
 
 // A CollectorOption sets an option on a Collector.
