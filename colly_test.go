@@ -33,7 +33,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/imroc/req/v3"
 
-	"github.com/gocolly/colly/v2/debug"
+	"github.com/M-Horizon-GmbH/colly-with-req/debug"
 )
 
 var (
