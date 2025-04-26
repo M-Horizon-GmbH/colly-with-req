@@ -1035,6 +1035,21 @@ func (c *Collector) WithTransport(transport *req.Transport) {
 	c.backend.Client.Transport = transport
 }
 
+// ImpersonateChrome sets the transport to a Chrome-like transport.
+func (c *Collector) ImpersonateChrome() {
+	c.backend.Client.Transport = c.backend.Client.ImpersonateChrome().GetTransport()
+}
+
+// ImpersonateFirefox sets the transport to a Firefox-like transport.
+func (c *Collector) ImpersonateFirefox() {
+	c.backend.Client.Transport = c.backend.Client.ImpersonateFirefox().GetTransport()
+}
+
+// ImpersonateFirefox sets the transport to a Safari-like transport.
+func (c *Collector) ImpersonateEdge() {
+	c.backend.Client.Transport = c.backend.Client.ImpersonateSafari().GetTransport()
+}
+
 // DisableCookies turns off cookie handling
 func (c *Collector) DisableCookies() {
 	c.backend.Client.SetCookieJar(nil)

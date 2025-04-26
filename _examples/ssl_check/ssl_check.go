@@ -3,11 +3,12 @@ package main
 import (
 	"log"
 
-	"github.com/gocolly/colly/v2"
+	"github.com/M-Horizon-GmbH/colly-with-req"
 )
 
 func main() {
 	c := colly.NewCollector()
+	c.ImpersonateChrome()
 
 	c.OnHTML("element-selector", func(e *colly.HTMLElement) {
 		log.Println(e.Text)
@@ -18,12 +19,12 @@ func main() {
 	})
 
 	c.OnResponse(func(r *colly.Response) {
-		log.Println("Visited", r.Request.URL, r.StatusCode)
+		log.Println(string(r.Body))
 	})
 
 	c.OnError(func(r *colly.Response, err error) {
 		log.Printf("Error on %s: %s", r.Request.URL, err)
 	})
 
-	c.Visit("https://scrapeme.live/shop/")
+	c.Visit("https://www.howsmyssl.com/")
 }
