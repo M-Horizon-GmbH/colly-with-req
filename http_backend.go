@@ -185,6 +185,11 @@ func (h *httpBackend) Do(request *req.Request, bodySize int, checkHeadersFunc ch
 	}
 	defer res.Body.Close()
 
+	proxyURL := ""
+	if purl, ok := res.Response.Request.Context().Value(ProxyURLKey).(string); ok {
+		proxyURL = purl
+	}
+
 	finalRequest := request
 	if res.Request != nil {
 		finalRequest = res.Request
@@ -215,6 +220,7 @@ func (h *httpBackend) Do(request *req.Request, bodySize int, checkHeadersFunc ch
 		StatusCode: res.StatusCode,
 		Body:       body,
 		Headers:    &res.Header,
+		ProxyURL:   proxyURL,
 	}, nil
 }
 

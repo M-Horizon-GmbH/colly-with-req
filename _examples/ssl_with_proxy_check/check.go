@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -26,7 +25,7 @@ func main() {
 	if len(proxyList) == 0 {
 		log.Fatal("no valid proxy URLs found in PROXY")
 	}
-	fmt.Println("proxyList:", proxyList)
+	log.Println("proxyList:", proxyList)
 
 	rp, err := proxy.RoundRobinProxySwitcher(proxyList...)
 	if err != nil {
@@ -34,7 +33,7 @@ func main() {
 	}
 	c.SetProxyFunc(rp)
 
-	c.OnHTML("element-selector", func(e *colly.HTMLElement) {
+	c.OnHTML(".label", func(e *colly.HTMLElement) {
 		log.Println(e.Text)
 	})
 
@@ -44,10 +43,12 @@ func main() {
 
 	c.OnResponse(func(r *colly.Response) {
 		log.Println(string(r.Body))
+		log.Println("ProxyUrl", r.ProxyURL)
 	})
 
 	c.OnError(func(r *colly.Response, err error) {
 		log.Printf("Error on %s: %s", r.Request.URL, err)
+		log.Println("ProxyUrl", r.ProxyURL)
 	})
 
 	c.Visit("https://www.howsmyssl.com/")

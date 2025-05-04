@@ -709,9 +709,7 @@ func (c *Collector) fetch(u *url.URL, method string, depth int, requestData io.R
 		return !request.abort
 	}
 	response, err := c.backend.Cache(reqr, c.MaxBodySize, checkHeadersFunc, c.CacheDir)
-	if proxyURL, ok := reqr.Context().Value(ProxyURLKey).(string); ok {
-		request.ProxyURL = proxyURL
-	}
+
 	if err := c.handleOnError(response, err, request, ctx); err != nil {
 		return err
 	}
