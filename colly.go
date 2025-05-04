@@ -643,7 +643,7 @@ func (c *Collector) scrape(u, method string, depth int, requestData io.Reader, c
 		}
 	}
 
-	req := req.R().
+	req := c.backend.Client.R().
 		SetContext(c.Context).
 		SetBody(requestData).
 		SetURL(parsedURL.String())
@@ -657,21 +657,21 @@ func (c *Collector) scrape(u, method string, depth int, requestData io.Reader, c
 	u = parsedURL.String()
 	c.wg.Add(1)
 	if c.Async {
-		go c.fetch(parsedURL.Host, method, depth, requestData, ctx, hdr, req)
+		go c.fetch(parsedURL, method, depth, requestData, ctx, hdr, req)
 		return nil
 	}
-	return c.fetch(parsedURL.Host, method, depth, requestData, ctx, hdr, req)
+	return c.fetch(parsedURL, method, depth, requestData, ctx, hdr, req)
 }
 
-func (c *Collector) fetch(host, method string, depth int, requestData io.Reader, ctx *Context, hdr http.Header, reqr *req.Request) error {
+func (c *Collector) fetch(u *url.URL, method string, depth int, requestData io.Reader, ctx *Context, hdr http.Header, reqr *req.Request) error {
 	defer c.wg.Done()
 	if ctx == nil {
 		ctx = NewContext()
 	}
 	request := &Request{
-		URL:       reqr.URL,
+		URL:       u,
 		Headers:   &reqr.Headers,
-		Host:      host,
+		Host:      u.Host,
 		Ctx:       ctx,
 		Depth:     depth,
 		Method:    method,
