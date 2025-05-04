@@ -39,7 +39,7 @@ type httpBackend struct {
 	lock       *sync.RWMutex
 }
 
-type checkHeadersFunc func(req *http.Request, statusCode int, header http.Header) bool
+type checkHeadersFunc func(req *req.Request, statusCode int, header http.Header) bool
 
 // LimitRule provides connection restrictions for domains.
 // Both DomainRegexp and DomainGlob can be used to specify
@@ -127,8 +127,8 @@ func (h *httpBackend) GetMatchingRule(domain string) *LimitRule {
 	return nil
 }
 
-func (h *httpBackend) Cache(request *http.Request, bodySize int, checkHeadersFunc checkHeadersFunc, cacheDir string) (*Response, error) {
-	if cacheDir == "" || request.Method != "GET" || request.Header.Get("Cache-Control") == "no-cache" {
+func (h *httpBackend) Cache(request *req.Request, bodySize int, checkHeadersFunc checkHeadersFunc, cacheDir string) (*Response, error) {
+	if cacheDir == "" || request.Method != "GET" || request.Headers.Get("Cache-Control") == "no-cache" {
 		return h.Do(request, bodySize, checkHeadersFunc)
 	}
 	sum := sha1.Sum([]byte(request.URL.String()))
@@ -165,8 +165,8 @@ func (h *httpBackend) Cache(request *http.Request, bodySize int, checkHeadersFun
 	return resp, os.Rename(filename+"~", filename)
 }
 
-func (h *httpBackend) Do(request *http.Request, bodySize int, checkHeadersFunc checkHeadersFunc) (*Response, error) {
-	r := h.GetMatchingRule(request.URL.Host)
+func (h *httpBackend) Do(request *req.Request, bodySize int, checkHeadersFunc checkHeadersFunc) (*Response, error) {
+	r := h.GetMatchingRule(request.RawURL)
 	if r != nil {
 		r.waitChan <- true
 		defer func(r *LimitRule) {
@@ -179,7 +179,7 @@ func (h *httpBackend) Do(request *http.Request, bodySize int, checkHeadersFunc c
 		}(r)
 	}
 
-	res, err := h.Client.GetClient().Do(request)
+	res, err := request.Send(request.Method, request.RawURL)
 	if err != nil {
 		return nil, err
 	}

@@ -13,7 +13,7 @@ type pageInfo struct {
 	Links      map[string]int
 }
 
-func handler(w http.ResponseWriter, r *http.Request) {
+func handler(w http.ResponseWriter, r *req.Request) {
 	URL := r.URL.Query().Get("url")
 	if URL == "" {
 		log.Println("missing URL argument")

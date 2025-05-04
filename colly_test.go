@@ -63,18 +63,18 @@ Disallow: /allowed*q=
 func newUnstartedTestServer() *httptest.Server {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *req.Request) {
 		w.WriteHeader(200)
 		w.Write(serverIndexResponse)
 	})
 
-	mux.HandleFunc("/callback_test", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/callback_test", func(w http.ResponseWriter, r *req.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(200)
 		w.Write(callbackTestHTML)
 	})
 
-	mux.HandleFunc("/html", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/html", func(w http.ResponseWriter, r *req.Request) {
 		if r.URL.Query().Get("no-content-type") != "" {
 			w.Header()["Content-Type"] = nil
 		} else {
@@ -94,7 +94,7 @@ func newUnstartedTestServer() *httptest.Server {
 		`))
 	})
 
-	mux.HandleFunc("/xml", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/xml", func(w http.ResponseWriter, r *req.Request) {
 		w.Header().Set("Content-Type", "application/xml")
 		w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
 <page>
@@ -105,29 +105,29 @@ func newUnstartedTestServer() *httptest.Server {
 		`))
 	})
 
-	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/login", func(w http.ResponseWriter, r *req.Request) {
 		if r.Method == "POST" {
 			w.Header().Set("Content-Type", "text/html")
 			w.Write([]byte(r.FormValue("name")))
 		}
 	})
 
-	mux.HandleFunc("/robots.txt", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/robots.txt", func(w http.ResponseWriter, r *req.Request) {
 		w.WriteHeader(200)
 		w.Write([]byte(robotsFile))
 	})
 
-	mux.HandleFunc("/allowed", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/allowed", func(w http.ResponseWriter, r *req.Request) {
 		w.WriteHeader(200)
 		w.Write([]byte("allowed"))
 	})
 
-	mux.HandleFunc("/disallowed", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/disallowed", func(w http.ResponseWriter, r *req.Request) {
 		w.WriteHeader(200)
 		w.Write([]byte("disallowed"))
 	})
 
-	mux.Handle("/redirect", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("/redirect", http.HandlerFunc(func(w http.ResponseWriter, r *req.Request) {
 		destination := "/redirected/"
 		if d := r.URL.Query().Get("d"); d != "" {
 			destination = d
@@ -135,18 +135,18 @@ func newUnstartedTestServer() *httptest.Server {
 		http.Redirect(w, r, destination, http.StatusSeeOther)
 	}))
 
-	mux.Handle("/redirected/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("/redirected/", http.HandlerFunc(func(w http.ResponseWriter, r *req.Request) {
 		fmt.Fprintf(w, `<a href="test">test</a>`)
 	}))
 
-	mux.HandleFunc("/set_cookie", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/set_cookie", func(w http.ResponseWriter, r *req.Request) {
 		c := &http.Cookie{Name: "test", Value: "testv", HttpOnly: false}
 		http.SetCookie(w, c)
 		w.WriteHeader(200)
 		w.Write([]byte("ok"))
 	})
 
-	mux.HandleFunc("/check_cookie", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/check_cookie", func(w http.ResponseWriter, r *req.Request) {
 		cs := r.Cookies()
 		if len(cs) != 1 || r.Cookies()[0].Value != "testv" {
 			w.WriteHeader(500)
@@ -157,33 +157,33 @@ func newUnstartedTestServer() *httptest.Server {
 		w.Write([]byte("ok"))
 	})
 
-	mux.HandleFunc("/500", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/500", func(w http.ResponseWriter, r *req.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(500)
 		w.Write([]byte("<p>error</p>"))
 	})
 
-	mux.HandleFunc("/user_agent", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/user_agent", func(w http.ResponseWriter, r *req.Request) {
 		w.WriteHeader(200)
 		w.Write([]byte(r.Header.Get("User-Agent")))
 	})
 
-	mux.HandleFunc("/host_header", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/host_header", func(w http.ResponseWriter, r *req.Request) {
 		w.WriteHeader(200)
 		w.Write([]byte(r.Host))
 	})
 
-	mux.HandleFunc("/accept_header", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/accept_header", func(w http.ResponseWriter, r *req.Request) {
 		w.WriteHeader(200)
 		w.Write([]byte(r.Header.Get("Accept")))
 	})
 
-	mux.HandleFunc("/custom_header", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/custom_header", func(w http.ResponseWriter, r *req.Request) {
 		w.WriteHeader(200)
 		w.Write([]byte(r.Header.Get("Test")))
 	})
 
-	mux.HandleFunc("/base", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/base", func(w http.ResponseWriter, r *req.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		w.Write([]byte(`<!DOCTYPE html>
 <html>
@@ -198,7 +198,7 @@ func newUnstartedTestServer() *httptest.Server {
 		`))
 	})
 
-	mux.HandleFunc("/base_relative", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/base_relative", func(w http.ResponseWriter, r *req.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		w.Write([]byte(`<!DOCTYPE html>
 <html>
@@ -213,7 +213,7 @@ func newUnstartedTestServer() *httptest.Server {
 		`))
 	})
 
-	mux.HandleFunc("/tabs_and_newlines", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/tabs_and_newlines", func(w http.ResponseWriter, r *req.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		w.Write([]byte(`<!DOCTYPE html>
 <html>
@@ -229,7 +229,7 @@ y">link</a>
 		`))
 	})
 
-	mux.HandleFunc("/foobar/xy", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/foobar/xy", func(w http.ResponseWriter, r *req.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		w.Write([]byte(`<!DOCTYPE html>
 <html>
@@ -243,11 +243,11 @@ y">link</a>
 		`))
 	})
 
-	mux.HandleFunc("/100%25", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/100%25", func(w http.ResponseWriter, r *req.Request) {
 		w.Write([]byte("100 percent"))
 	})
 
-	mux.HandleFunc("/large_binary", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/large_binary", func(w http.ResponseWriter, r *req.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
 		ww := bufio.NewWriter(w)
 		defer ww.Flush()
@@ -259,7 +259,7 @@ y">link</a>
 		}
 	})
 
-	mux.HandleFunc("/slow", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/slow", func(w http.ResponseWriter, r *req.Request) {
 		w.WriteHeader(200)
 
 		ticker := time.NewTicker(100 * time.Millisecond)
@@ -1718,7 +1718,7 @@ func BenchmarkOnResponse(b *testing.B) {
 func requireSessionCookieSimple(handler http.Handler) http.Handler {
 	const cookieName = "session_id"
 
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *req.Request) {
 		if _, err := r.Cookie(cookieName); err == http.ErrNoCookie {
 			http.SetCookie(w, &http.Cookie{Name: cookieName, Value: "1"})
 			http.Redirect(w, r, r.RequestURI, http.StatusFound)
@@ -1732,7 +1732,7 @@ func requireSessionCookieAuthPage(handler http.Handler) http.Handler {
 	const setCookiePath = "/auth"
 	const cookieName = "session_id"
 
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *req.Request) {
 		if r.URL.Path == setCookiePath {
 			destination := r.URL.Query().Get("return")
 			http.Redirect(w, r, destination, http.StatusFound)

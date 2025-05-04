@@ -481,7 +481,7 @@ func (c *Collector) Init() {
 	c.backend = &httpBackend{}
 	jar, _ := cookiejar.New(nil)
 	c.backend.Init(jar)
-	c.backend.Client.GetClient().CheckRedirect = c.checkRedirectFunc()
+	c.backend.Client.SetRedirectPolicy(c.checkRedirectPolicy())
 	c.wg = &sync.WaitGroup{}
 	c.lock = &sync.RWMutex{}
 	c.robotsMap = make(map[string]*robotstxt.RobotsData)
@@ -496,7 +496,7 @@ func (c *Collector) Init() {
 // This function should be used when the scraper is run on
 // Google App Engine. Example:
 //
-//	func startScraper(w http.ResponseWriter, r *http.Request) {
+//	func startScraper(w http.ResponseWriter, r *req.Request) {
 //	  ctx := appengine.NewContext(r)
 //	  c := colly.NewCollector()
 //	  c.Appengine(ctx)
@@ -643,40 +643,35 @@ func (c *Collector) scrape(u, method string, depth int, requestData io.Reader, c
 		}
 	}
 
-	req, err := http.NewRequest(method, parsedURL.String(), requestData)
-	if err != nil {
-		return err
+	req := req.R().
+		SetContext(c.Context).
+		SetBody(requestData).
+		SetURL(parsedURL.String())
+
+	if req.Headers == nil {
+		req.Headers = make(http.Header)
 	}
-	req.Header = hdr
-	// The Go HTTP API ignores "Host" in the headers, preferring the client
-	// to use the Host field on Request.
-	if hostHeader := hdr.Get("Host"); hostHeader != "" {
-		req.Host = hostHeader
-	}
-	// note: once 1.13 is minimum supported Go version,
-	// replace this with http.NewRequestWithContext
-	req = req.WithContext(c.Context)
-	if err := c.requestCheck(parsedURL, method, req.GetBody, depth, checkRevisit); err != nil {
-		return err
-	}
+
+	req.Headers = hdr
+
 	u = parsedURL.String()
 	c.wg.Add(1)
 	if c.Async {
-		go c.fetch(u, method, depth, requestData, ctx, hdr, req)
+		go c.fetch(parsedURL.Host, method, depth, requestData, ctx, hdr, req)
 		return nil
 	}
-	return c.fetch(u, method, depth, requestData, ctx, hdr, req)
+	return c.fetch(parsedURL.Host, method, depth, requestData, ctx, hdr, req)
 }
 
-func (c *Collector) fetch(u, method string, depth int, requestData io.Reader, ctx *Context, hdr http.Header, req *http.Request) error {
+func (c *Collector) fetch(host, method string, depth int, requestData io.Reader, ctx *Context, hdr http.Header, reqr *req.Request) error {
 	defer c.wg.Done()
 	if ctx == nil {
 		ctx = NewContext()
 	}
 	request := &Request{
-		URL:       req.URL,
-		Headers:   &req.Header,
-		Host:      req.Host,
+		URL:       reqr.URL,
+		Headers:   &reqr.Headers,
+		Host:      host,
 		Ctx:       ctx,
 		Depth:     depth,
 		Method:    method,
@@ -685,8 +680,8 @@ func (c *Collector) fetch(u, method string, depth int, requestData io.Reader, ct
 		ID:        atomic.AddUint32(&c.requestCount, 1),
 	}
 
-	if req.Header.Get("Accept") == "" {
-		req.Header.Set("Accept", "*/*")
+	if reqr.Headers.Get("Accept") == "" {
+		reqr.Headers.Set("Accept", "*/*")
 	}
 
 	c.handleOnRequest(request)
@@ -695,26 +690,26 @@ func (c *Collector) fetch(u, method string, depth int, requestData io.Reader, ct
 		return nil
 	}
 
-	if method == "POST" && req.Header.Get("Content-Type") == "" {
-		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	if method == "POST" && reqr.Headers.Get("Content-Type") == "" {
+		reqr.Headers.Add("Content-Type", "application/x-www-form-urlencoded")
 	}
 
 	var hTrace *HTTPTrace
 	if c.TraceHTTP {
 		hTrace = &HTTPTrace{}
-		req = hTrace.WithTrace(req)
+		reqr = hTrace.WithTrace(reqr)
 	}
-	origURL := req.URL
-	checkHeadersFunc := func(req *http.Request, statusCode int, headers http.Header) bool {
+	origURL := reqr.URL
+	checkHeadersFunc := func(req *req.Request, statusCode int, headers http.Header) bool {
 		if req.URL != origURL {
 			request.URL = req.URL
-			request.Headers = &req.Header
+			request.Headers = &req.Headers
 		}
 		c.handleOnResponseHeaders(&Response{Ctx: ctx, Request: request, StatusCode: statusCode, Headers: &headers})
 		return !request.abort
 	}
-	response, err := c.backend.Cache(req, c.MaxBodySize, checkHeadersFunc, c.CacheDir)
-	if proxyURL, ok := req.Context().Value(ProxyURLKey).(string); ok {
+	response, err := c.backend.Cache(reqr, c.MaxBodySize, checkHeadersFunc, c.CacheDir)
+	if proxyURL, ok := reqr.Context().Value(ProxyURLKey).(string); ok {
 		request.ProxyURL = proxyURL
 	}
 	if err := c.handleOnError(response, err, request, ctx); err != nil {
@@ -1087,13 +1082,7 @@ func (c *Collector) SetStorage(s storage.Storage) error {
 // and "socks5" are supported. If the scheme is empty,
 // "http" is assumed.
 func (c *Collector) SetProxy(proxyURL string) error {
-	proxyParsed, err := url.Parse(proxyURL)
-	if err != nil {
-		return err
-	}
-
-	c.SetProxyFunc(http.ProxyURL(proxyParsed))
-
+	c.backend.Client = c.backend.Client.SetProxyURL(proxyURL)
 	return nil
 }
 
@@ -1360,7 +1349,7 @@ func (c *Collector) Limits(rules []*LimitRule) error {
 // SetRedirectHandler instructs the Collector to allow multiple downloads of the same URL
 func (c *Collector) SetRedirectHandler(f func(req *http.Request, via []*http.Request) error) {
 	c.redirectHandler = f
-	c.backend.Client.GetClient().CheckRedirect = c.checkRedirectFunc()
+	c.backend.Client.GetClient().CheckRedirect = c.checkRedirectPolicy()
 }
 
 // SetCookies handles the receipt of the cookies in a reply for the given URL
@@ -1428,7 +1417,7 @@ func (c *Collector) Clone() *Collector {
 	}
 }
 
-func (c *Collector) checkRedirectFunc() func(req *http.Request, via []*http.Request) error {
+func (c *Collector) checkRedirectPolicy() req.RedirectPolicy {
 	return func(req *http.Request, via []*http.Request) error {
 		if err := c.checkFilters(req.URL.String(), req.URL.Hostname()); err != nil {
 			return fmt.Errorf("Not following redirect to %q: %w", req.URL, err)

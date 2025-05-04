@@ -33,6 +33,7 @@ func (r *roundRobinSwitcher) GetProxy(pr *http.Request) (*url.URL, error) {
 	u := r.proxyURLs[index%uint32(len(r.proxyURLs))]
 
 	ctx := context.WithValue(pr.Context(), colly.ProxyURLKey, u.String())
+
 	*pr = *pr.WithContext(ctx)
 	return u, nil
 }

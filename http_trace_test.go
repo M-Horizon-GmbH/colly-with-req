@@ -5,6 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/imroc/req/v3"
 )
 
 const testDelay = 200 * time.Millisecond
@@ -12,11 +14,11 @@ const testDelay = 200 * time.Millisecond
 func newTraceTestServer(delay time.Duration) *httptest.Server {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *req.Request) {
 		time.Sleep(delay)
 		w.WriteHeader(200)
 	})
-	mux.HandleFunc("/error", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/error", func(w http.ResponseWriter, r *req.Request) {
 		time.Sleep(delay)
 		w.WriteHeader(500)
 	})

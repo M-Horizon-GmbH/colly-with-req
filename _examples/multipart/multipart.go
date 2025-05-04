@@ -25,7 +25,7 @@ func generateFormData() map[string][]byte {
 }
 
 func setupServer() {
-	var handler http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) {
+	var handler http.HandlerFunc = func(w http.ResponseWriter, r *req.Request) {
 		fmt.Println("received request")
 		err := r.ParseMultipartForm(10000000)
 		if err != nil {

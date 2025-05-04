@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gocolly/colly/v2"
+	"github.com/imroc/req/v3"
 )
 
 func TestQueue(t *testing.T) {
@@ -75,20 +76,20 @@ func TestQueue(t *testing.T) {
 	}
 }
 
-func serverHandler(w http.ResponseWriter, req *http.Request) {
+func serverHandler(w http.ResponseWriter, req *req.Request) {
 	if !serverRoute(w, req) {
 		shutdown(w)
 	}
 }
 
-func serverRoute(w http.ResponseWriter, req *http.Request) bool {
+func serverRoute(w http.ResponseWriter, req *req.Request) bool {
 	if req.URL.Path == "/delay" {
 		return serveDelay(w, req) == nil
 	}
 	return false
 }
 
-func serveDelay(w http.ResponseWriter, req *http.Request) error {
+func serveDelay(w http.ResponseWriter, req *req.Request) error {
 	q := req.URL.Query()
 	t, err := time.ParseDuration(q.Get("t"))
 	if err != nil {

@@ -1,9 +1,10 @@
 package colly
 
 import (
-	"net/http"
 	"net/http/httptrace"
 	"time"
+
+	"github.com/imroc/req/v3"
 )
 
 // HTTPTrace provides a datastructure for storing an http trace.
@@ -32,6 +33,6 @@ func (ht *HTTPTrace) trace() *httptrace.ClientTrace {
 
 // WithTrace returns the given HTTP Request with this HTTPTrace added to its
 // context.
-func (ht *HTTPTrace) WithTrace(req *http.Request) *http.Request {
-	return req.WithContext(httptrace.WithClientTrace(req.Context(), ht.trace()))
+func (ht *HTTPTrace) WithTrace(req *req.Request) *req.Request {
+	return req.SetContext(httptrace.WithClientTrace(req.Context(), ht.trace()))
 }
