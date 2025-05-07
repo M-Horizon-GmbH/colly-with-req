@@ -180,15 +180,20 @@ func (h *httpBackend) Do(request *req.Request, bodySize int, checkHeadersFunc ch
 	}
 
 	res, err := request.Send(request.Method, request.RawURL)
+
+	tr := h.Client.GetClient().Transport.(*req.Transport)
+
+	pu, perr := tr.Proxy(request.RawRequest)
+	if perr != nil {
+		return nil, perr
+	}
+
+	proxyURL := pu.String()
+
 	if err != nil {
 		return nil, err
 	}
 	defer res.Body.Close()
-
-	proxyURL := ""
-	if purl, ok := res.Response.Request.Context().Value(ProxyURLKey).(string); ok {
-		proxyURL = purl
-	}
 
 	finalRequest := request
 	if res.Request != nil {
